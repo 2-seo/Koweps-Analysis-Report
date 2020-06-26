@@ -2,6 +2,9 @@ library(foreign)
 library(dplyr)
 library(ggplot2)
 
+###############################################################################
+###############################################################################
+
 # 1) 저소득 가구의 가구 형태
 
 originalData <- read.spss("Koweps_hpc10_2015_beta1.sav", to.data.frame = T)
@@ -28,12 +31,14 @@ Result1 <- Data1 %>%
   group_by(classification_income , form) %>%
   summarise(count = n())
 
-ggplot(Result1, aes(reorder(form, -count), count)) +
+# 저소득 가구의 형태 그래프
+ggplot(Result1, aes(reorder(form, -count), count, fill = form)) +
   geom_col() +
   xlab('Family Form') + ylab('Count') +
   ggtitle('Forms of Low-income Household')
   
-
+###############################################################################
+###############################################################################
 
 # 2) 담배와 숙면의 관계
 
@@ -66,22 +71,49 @@ table(Data2$smoking)
 smoker_data <- Data2 %>%
   filter(smoking == 'yes')
 
-# 비흡연자 Sampleing
+smoker_data$sleeplessness <- ifelse(smoker_data$sleeplessness == 1, 'A',
+                                    ifelse(smoker_data$sleeplessness == 2, 'B',
+                                           ifelse(smoker_data$sleeplessness == 3, 'C', 'D')))
+
+
+# 비흡연자 Sampling
 non_smoker <- Data2 %>%
   filter(smoking == 'no')
 
 non_smoker_row <- sample(rownames(non_smoker), dim(non_smoker)[1]*(2110/10728))
 non_smoker_data <- non_smoker[non_smoker_row,]
 
+non_smoker_data$sleeplessness <- ifelse(non_smoker_data$sleeplessness == 1, 'A',
+                                        ifelse(non_smoker_data$sleeplessness == 2, 'B',
+                                               ifelse(non_smoker_data$sleeplessness == 3, 'C', 'D')))
+
 View(non_smoker_data)
 
 # 비흡연자 불면증 정도
-ggplot(non_smoker_data) +
-  geom_bar(aes(sleeplessness))
+non_smoker_data %>%
+  group_by(sleeplessness) %>%
+  summarise(Count = n()) %>%
+  ggplot(aes(x = sleeplessness, y = Count, fill = sleeplessness, label = Count)) +
+  geom_col() +
+  geom_text(vjust = -0.2, color = 'black') +
+  ggtitle('The degree to which non-smokers sleep') +
+  xlab('Degree of insomnia') + ylab('Count') +
+  scale_fill_manual(values = c( "#FFCC00", "#FF9900", 
+                                "#FF6600", "#FF3300")) +
+  theme(plot.title = element_text(size=18), legend.position = 'bottom')
 
 # 흡연자 불면증 정도
-ggplot(smoker_data) +
-  geom_bar(aes(sleeplessness))
+smoker_data %>%
+  group_by(sleeplessness) %>%
+  summarise(Count = n()) %>%
+  ggplot(aes(x = sleeplessness, y = Count, fill = sleeplessness, label = Count)) +
+  geom_col() +
+  geom_text(vjust = -0.2, color = 'black') +
+  ggtitle('The degree to which smokers sleep') +
+  xlab('Degree of insomnia') + ylab('Count') +
+  scale_fill_manual(values = c( "#FFCC00", "#FF9900", 
+                                "#FF6600", "#FF3300")) +
+  theme(plot.title = element_text(size=18), legend.position = 'bottom')
 
 # 흡연자 비흡연자 그래프 같이 보기
 smoker_nonsmoker_data <- bind_rows(smoker_data, non_smoker_data)
@@ -89,18 +121,28 @@ smoker_nonsmoker_data <- bind_rows(smoker_data, non_smoker_data)
 smoker_nonsmoker_data %>%
   group_by(sleeplessness, smoking) %>%
   summarise(count = n()) %>%
-  ggplot() +
-  geom_col(aes(sleeplessness, count, fill = smoking), position = 'dodge') +
-  ggtitle('Smoking and Insomnia')
+  ggplot(aes(sleeplessness, count, fill = smoking, label = count)) +
+  geom_col(position = 'dodge') +
+  geom_text(vjust = 1.5, color = 'black') +
+  ggtitle('Smoker and Non-smoker') +
+  xlab('Degree of insomnia') + ylab('Count') +
+  theme(plot.title = element_text(size=18), legend.position = 'bottom')
 
 # 흡연자 담배량에 따른 불면증 정도
 smoker_data %>%
   group_by(sleeplessness) %>%
-  summarise(mean_smoking = mean(avg_daily_smoking)) %>%
-  ggplot() +
-  geom_col(aes(sleeplessness, mean_smoking, fill = sleeplessness))
+  summarise(mean_smoking = round(mean(avg_daily_smoking), 2)) %>%
+  ggplot(aes(sleeplessness, mean_smoking, fill = sleeplessness, label = mean_smoking)) +
+  geom_col() +
+  geom_text(vjust = -0.2, color = 'black') +
+  ggtitle('Average amount of smoking and insomnia') +
+  scale_fill_manual(values = c( "#FFCC00", "#FF9900", 
+                                "#FF6600", "#FF3300")) +
+  theme(plot.title = element_text(size=18), legend.position = 'bottom')
 
 
+###############################################################################
+###############################################################################
 
 # 3) 최종 학력과 임금과의 상관 관계
 
