@@ -123,7 +123,7 @@ smoker_nonsmoker_data %>%
   summarise(count = n()) %>%
   ggplot(aes(sleeplessness, count, fill = smoking, label = count)) +
   geom_col(position = 'dodge') +
-  geom_text(vjust = 1.5, color = 'black') +
+  geom_text(vjust = 1.5, color = 'black', position = position_dodge(width = 1)) +
   ggtitle('Smoker and Non-smoker') +
   xlab('Degree of insomnia') + ylab('Count') +
   theme(plot.title = element_text(size=18), legend.position = 'bottom')
@@ -158,31 +158,110 @@ smoker_data %>%
 
 Data3 <- originalData
 
-Data3 <- Data3 %>%
+Data3_Income <- Data3 %>%
   rename(avgMonthIncome = p1002_8aq1,
          finalEdu= p1007_3aq1) %>%
   filter(!is.na(finalEdu), !is.na(avgMonthIncome)) %>%
   select(avgMonthIncome, finalEdu) %>%
   group_by(finalEdu) %>%
-  summarise(avgIncome = mean(avgMonthIncome),
+  summarise(avgIncome = round(mean(avgMonthIncome), 2),
             maxIncome = max(avgMonthIncome),
             minIncome = min(avgMonthIncome))
 
+Data3_Income$finalEdu <- ifelse(Data3_Income$finalEdu == 5, 'Very High',
+                                ifelse(Data3_Income$finalEdu == 4, 'High',
+                                       ifelse(Data3_Income$finalEdu == 3, 'Middle',
+                                              ifelse(Data3_Income$finalEdu == 2, 'Low', 'Very Low'))))
+
+View(Data3_Income)
+
 # 최종학력과 평균 임금
-ggplot(Data3) +
-  geom_col(aes(finalEdu, avgIncome)) +
-  ggtitle('Final education and average wage')
+
+Data3_Income %>%
+ggplot(aes(reorder(finalEdu, avgIncome), avgIncome, label = avgIncome)) +
+  geom_col(aes(fill = finalEdu)) +
+  geom_text(vjust = -0.2, color = 'black') +
+  ggtitle('Final education and average wage') +
+  xlab('Final Education') + ylab('Average Income(Unit: 10,000won)') +
+  theme(plot.title = element_text(size=18), legend.position = 'bottom')
 
 # 최종학력과 최고 임금
-ggplot(Data3) +
-  geom_line(aes(finalEdu, maxIncome)) +
-  ggtitle('Final education and maximum wage')
+Data3_Income %>%
+ggplot(aes(reorder(finalEdu, maxIncome), maxIncome, label = maxIncome)) +
+  geom_col(aes(fill = finalEdu)) +
+  geom_text(vjust = -0.2, color = 'black') +
+  ggtitle('Final education and maximum wage') +
+  xlab('Final Education') + ylab('Highest Wage(Unit: 10,000won)') +
+  theme(plot.title = element_text(size=18), legend.position = 'bottom')
 
 # 최종학력과 최저 임금
-ggplot(Data3) +
-  geom_line(aes(finalEdu, minIncome)) +
-  ggtitle('Final education and minimum wage')
+Data3_Income %>%
+ggplot(aes(reorder(finalEdu, minIncome), minIncome, label = minIncome)) +
+  geom_col(aes(fill = finalEdu)) +
+  geom_text(vjust = -0.2, color = 'black') +
+  ggtitle('Final education and minimum wage') +
+  xlab('Final Education') + ylab('Lowest Wage(Unit: 10,000won)') +
+  theme(plot.title = element_text(size=18), legend.position = 'bottom')
 
+# 직업 만족도
+job_Satisfaction <- Data3 %>%
+  select(p1007_3aq1, p1003_9) %>%
+  rename(finalEdu = p1007_3aq1,
+         Satisfaction = p1003_9) %>%
+  filter(!is.na(finalEdu) & !is.na(Satisfaction)) %>%
+  group_by(finalEdu, Satisfaction) %>%
+  summarise(Count = n())
+
+View(job_Satisfaction)
+
+table(job_Satisfaction$Satisfaction)
+
+job_Satisfaction$finalEdu <- ifelse(job_Satisfaction$finalEdu == 5, 'Very High',
+                                    ifelse(job_Satisfaction$finalEdu == 4, 'High',
+                                           ifelse(job_Satisfaction$finalEdu == 3, 'Middle',
+                                                  ifelse(job_Satisfaction$finalEdu == 2, 'Low', 'Very Low'))))
+
+job_Satisfaction$Satisfaction <- ifelse(job_Satisfaction$Satisfaction == 5, 'A',
+                                    ifelse(job_Satisfaction$Satisfaction == 4, 'B',
+                                           ifelse(job_Satisfaction$Satisfaction == 3, 'C',
+                                                  ifelse(job_Satisfaction$Satisfaction == 2, 'D', 'E'))))
+
+
+job_Satisfaction %>%
+  ggplot(aes(finalEdu, Count, fill = Satisfaction, label = Count)) +
+  geom_col(position = 'dodge2') +
+  geom_text(vjust = -0.2, color = 'black', position = position_dodge(width = 1)) +
+  xlab('Final Education') + ylab('Count') +
+  ggtitle('Job Satisfaction by Final Education') +
+  theme(plot.title = element_text(size=18), legend.position = 'bottom') +
+  scale_fill_manual(values = c( "#18bfe9", "#7595eb", "#c371ed", 
+                                "#db62a9", "#f4505e"))
+
+job_Satisfaction <- job_Satisfaction %>%
+  group_by(finalEdu) %>%
+  mutate(Total_People = sum(Count))
+
+job_Satisfaction <- job_Satisfaction %>%
+  mutate(Rate = round(Count/Total_People, 2))
+
+job_Satisfaction  
+  
+# 만족도 비율 보기
+install.packages('ggrepel')
+library('ggrepel')
+
+job_Satisfaction %>%
+  ggplot(aes(reorder(finalEdu, -Rate), Rate, fill = Satisfaction, label = Rate)) +
+  geom_col(position = 'dodge2') +
+  geom_text_repel(hjust = 0.5, vjust = -0.5, position = position_dodge(width = 1)) +
+  xlab('Final Education') + ylab('Rate') +
+  ggtitle('Percentage of job satisfaction according to final education') +
+  theme(plot.title = element_text(size=13), legend.position = 'bottom') +
+  scale_fill_manual(values = c( "#18bfe9", "#7595eb", "#c371ed", 
+                                "#db62a9", "#f4505e"))
+
+  
+  
 
 
 
